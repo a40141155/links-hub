@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Links Hub – Supabase Edition</title>
+  <style>
+    :root { --gap: 16px; --default-color: #e2e8f0; }
+    * { box-sizing: border-box; }
+    body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Open Sans","Helvetica Neue",sans-serif; margin:0; padding:32px; background:#f9fafb; color:#0f172a; }
+    h1{margin-top:0;}
+    button{padding:8px 16px;background:#0f172a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;}
+    input{padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;}
+    .hidden{display:none;}
+    .auth-card{max-width:360px;margin:0 auto 32px auto;padding:24px;border:1px solid #cbd5e1;border-radius:12px;background:#ffffff;display:flex;flex-direction:column;gap:12px;}
+    .toolbar{display:flex;gap:8px;margin-bottom:var(--gap);} 
+    .links{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));grid-auto-rows:120px;gap:var(--gap);}  
+    .card{border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8px;transition:filter .15s;cursor:pointer;overflow:hidden;position:relative;background:var(--default-color);}  
+    .card:hover{filter:brightness(90%);}  
+    .card span.title{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90%;font-weight:500;font-size:14px;}
+    .card span.clicks{font-size:11px;color:#475569;}
+    .edit-btn,.color-btn{position:absolute;top:6px;width:24px;height:24px;border:none;border-radius:4px;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+    .edit-btn{right:6px;background:#0f172a;}.edit-btn:hover{background:#1e293b;}
+    .color-btn{left:6px;background:#7c3aed;}.color-btn:hover{background:#6d28d9;}
+    .small{grid-column:span 1;grid-row:span 1;}.small span.title{font-size:14px;}.small span.clicks{font-size:11px;}
+    .medium{grid-column:span 2;grid-row:span 2;}.medium span.title{font-size:16px;}.medium span.clicks{font-size:12px;}
+    .large{grid-column:span 3;grid-row:span 3;}.large span.title{font-size:18px;}.large span.clicks{font-size:13px;}
+    .xlarge{grid-column:span 4;grid-row:span 4;}.xlarge span.title{font-size:20px;}.xlarge span.clicks{font-size:14px;}
+  </style>
+</head>
+<body>
+  <h1>Links Hub</h1>
+
+  <!-- Auth Section -->
+  <div id="auth-section" class="auth-card">
+    <input id="email" type="email" placeholder="Email" />
+    <input id="password" type="password" placeholder="Password" />
+    <button id="signup-btn">註冊</button>
+    <button id="login-btn">登入</button>
+  </div>
+
+  <!-- App Section -->
+  <div id="app-section" class="hidden">
+    <div style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;max-width:700px;">
+      <div>歡迎 <span id="user-email"></span></div>
+      <button id="logout-btn" style="background:#dc2626;">登出</button>
+    </div>
+    <div class="toolbar" style="max-width:700px;">
+      <input id="url-input" type="url" placeholder="https://example.com" style="flex:1;" />
+      <button id="add-btn">新增連結</button>
+    </div>
+    <div class="links" id="links"></div>
+  </div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+/* ====== 1. 初始化 Supabase ====== */
+const SUPABASE_URL = 'https://otmdvtoenelgzxhqkdff.supabase.co'; // 更新為正確 URL
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90bWR2dG9lbmVsZ3p4aHFrZGZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwNzg1NDQsImV4cCI6MjA2ODY1NDU0NH0.txHkoQP4Nv7cYMbxuurRrm_SejF1yIgTw1XBI0kxG-8';
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ====== 2. DOM refs ====== */
+const authSection = document.getElementById('auth-section');
+const appSection  = document.getElementById('app-section');
+const emailEl     = document.getElementById('email');
+const pwEl        = document.getElementById('password');
+const signupBtn   = document.getElementById('signup-btn');
+const loginBtn    = document.getElementById('login-btn');
+const logoutBtn   = document.getElementById('logout-btn');
+const userEmailEl = document.getElementById('user-email');
+
+/* ====== 3. Auth flow ====== */
+async function refreshSession() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    authSection.classList.add('hidden');
+    appSection.classList.remove('hidden');
+    userEmailEl.textContent = session.user.email;
+    loadLinks();
+  } else {
+    authSection.classList.remove('hidden');
+    appSection.classList.add('hidden');
+  }
+}
+
+signupBtn.addEventListener('click', async () => {
+  const { error } = await supabase.auth.signUp({
+    email: emailEl.value.trim(),
+    password: pwEl.value.trim()
+  });
+  if (error) alert(error.message); else { alert('註冊成功，請收信驗證後再登入'); }
+});
+
+loginBtn.addEventListener('click', async () => {
+  const { error } = await supabase.auth.signInWithPassword({
+    email: emailEl.value.trim(),
+    password: pwEl.value.trim()
+  });
+  if (error) alert(error.message);
+});
+
+logoutBtn.addEventListener('click', async () => {
+  await supabase.auth.signOut();
+});
+
+supabase.auth.onAuthStateChange((_event, _session) => refreshSession());
+await refreshSession();
+
+/* ====== 4. Links CRUD ====== */
+const linksGrid = document.getElementById('links');
+const urlInput  = document.getElementById('url-input');
+const addBtn    = document.getElementById('add-btn');
+
+function getSizeClass(c) { return c>=64?'xlarge':c>=16?'large':c>=4?'medium':'small'; }
+
+async function loadLinks() {
+  linksGrid.innerHTML = '載入中...';
+  const { data: links, error } = await supabase
+    .from('links')
+    .select('*')
+    .order('clicks', { ascending:false });
+  if (error) { linksGrid.textContent = error.message; return; }
+  renderLinks(links);
+}
+
+function renderLinks(links) {
+  linksGrid.innerHTML = '';
+  links.forEach(link => {
+    const card = document.createElement('div');
+    card.className = `card ${getSizeClass(link.clicks)}`;
+    card.style.background = link.color || getComputedStyle(document.documentElement).getPropertyValue('--default-color');
+    card.innerHTML = `
+      <button class="color-btn">🎨</button>
+      <button class="edit-btn">✏️</button>
+      <span class="title">${link.title || link.url}</span>
+      <span class="clicks">${link.clicks} 次點擊</span>`;
+
+    card.addEventListener('click', async () => {
+      await supabase.from('links').update({ clicks: link.clicks + 1 }).eq('id', link.id);
+      window.open(link.url, '_blank');
+      loadLinks();
+    });
+
+    const editBtn = card.querySelector('.edit-btn');
+    const titleSpan = card.querySelector('.title');
+    editBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      const newName = prompt('輸入新名稱', link.title || link.url);
+      if (newName!==null) updateLink(link.id, { title: newName.trim() });
+    });
+
+    const colorBtn = card.querySelector('.color-btn');
+    colorBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      pickColor(link.color || '#e2e8f
