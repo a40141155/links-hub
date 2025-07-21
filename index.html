@@ -30,16 +30,12 @@
 </head>
 <body>
   <h1>Links Hub</h1>
-
-  <!-- Auth Section -->
   <div id="auth-section" class="auth-card">
     <input id="email" type="email" placeholder="Email" />
     <input id="password" type="password" placeholder="Password" />
     <button id="signup-btn">註冊</button>
     <button id="login-btn">登入</button>
   </div>
-
-  <!-- App Section -->
   <div id="app-section" class="hidden">
     <div style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;max-width:700px;">
       <div>歡迎 <span id="user-email"></span></div>
@@ -51,106 +47,11 @@
     </div>
     <div class="links" id="links"></div>
   </div>
-
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-
-/* ====== 1. 初始化 Supabase ====== */
-const SUPABASE_URL = 'https://otmdvtoenelgzxhqkdff.supabase.co'; // 更新為正確 URL
+const SUPABASE_URL = 'https://otmdvtoenelgzxhqkdff.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90bWR2dG9lbmVsZ3p4aHFrZGZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwNzg1NDQsImV4cCI6MjA2ODY1NDU0NH0.txHkoQP4Nv7cYMbxuurRrm_SejF1yIgTw1XBI0kxG-8';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-/* ====== 2. DOM refs ====== */
-const authSection = document.getElementById('auth-section');
-const appSection  = document.getElementById('app-section');
-const emailEl     = document.getElementById('email');
-const pwEl        = document.getElementById('password');
-const signupBtn   = document.getElementById('signup-btn');
-const loginBtn    = document.getElementById('login-btn');
-const logoutBtn   = document.getElementById('logout-btn');
-const userEmailEl = document.getElementById('user-email');
-
-/* ====== 3. Auth flow ====== */
-async function refreshSession() {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) {
-    authSection.classList.add('hidden');
-    appSection.classList.remove('hidden');
-    userEmailEl.textContent = session.user.email;
-    loadLinks();
-  } else {
-    authSection.classList.remove('hidden');
-    appSection.classList.add('hidden');
-  }
-}
-
-signupBtn.addEventListener('click', async () => {
-  const { error } = await supabase.auth.signUp({
-    email: emailEl.value.trim(),
-    password: pwEl.value.trim()
-  });
-  if (error) alert(error.message); else { alert('註冊成功，請收信驗證後再登入'); }
-});
-
-loginBtn.addEventListener('click', async () => {
-  const { error } = await supabase.auth.signInWithPassword({
-    email: emailEl.value.trim(),
-    password: pwEl.value.trim()
-  });
-  if (error) alert(error.message);
-});
-
-logoutBtn.addEventListener('click', async () => {
-  await supabase.auth.signOut();
-});
-
-supabase.auth.onAuthStateChange((_event, _session) => refreshSession());
-await refreshSession();
-
-/* ====== 4. Links CRUD ====== */
-const linksGrid = document.getElementById('links');
-const urlInput  = document.getElementById('url-input');
-const addBtn    = document.getElementById('add-btn');
-
-function getSizeClass(c) { return c>=64?'xlarge':c>=16?'large':c>=4?'medium':'small'; }
-
-async function loadLinks() {
-  linksGrid.innerHTML = '載入中...';
-  const { data: links, error } = await supabase
-    .from('links')
-    .select('*')
-    .order('clicks', { ascending:false });
-  if (error) { linksGrid.textContent = error.message; return; }
-  renderLinks(links);
-}
-
-function renderLinks(links) {
-  linksGrid.innerHTML = '';
-  links.forEach(link => {
-    const card = document.createElement('div');
-    card.className = `card ${getSizeClass(link.clicks)}`;
-    card.style.background = link.color || getComputedStyle(document.documentElement).getPropertyValue('--default-color');
-    card.innerHTML = `
-      <button class="color-btn">🎨</button>
-      <button class="edit-btn">✏️</button>
-      <span class="title">${link.title || link.url}</span>
-      <span class="clicks">${link.clicks} 次點擊</span>`;
-
-    card.addEventListener('click', async () => {
-      await supabase.from('links').update({ clicks: link.clicks + 1 }).eq('id', link.id);
-      window.open(link.url, '_blank');
-      loadLinks();
-    });
-
-    const editBtn = card.querySelector('.edit-btn');
-    const titleSpan = card.querySelector('.title');
-    editBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      const newName = prompt('輸入新名稱', link.title || link.url);
-      if (newName!==null) updateLink(link.id, { title: newName.trim() });
-    });
-
-    const colorBtn = card.querySelector('.color-btn');
-    colorBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      pickColor(link.color || '#e2e8f
+</script>
+</body>
+</html>
